@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>КПК</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.0/socket.io.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+</head>
+<body>
+    <div class="phone-frame">
+        <!-- Login Screen -->
+        <div id="login-screen" class="screen-container visible">
+            <div class="login-form">
+                <h2>Вхід</h2>
+                <div class="login-field">
+                    <input type="text" id="nickname-input" placeholder="Введіть ваш нікнейм">
+                </div>
+                <div class="login-field">
+                    <select id="faction-select" class="faction-select">
+                        <option value="" disabled selected>Завантаження угрупувань...</option>
+                    </select>
+                </div>
+                <button type="button" class="login-button">
+                    <span>Увійти</span>
+                </button>
+                <p id="login-message" class="message"></p>
+            </div>
+        </div>
+
+        <!-- Main Menu Screen -->
+        <div id="main-menu-screen" class="screen-container">
+            <header class="common-header">
+                <button id="main-menu-home-button" class="header-home-button">
+                    <span>Головна</span>
+                </button>
+                <div id="header-timer-button" class="header-time-display clickable">00:00</div>
+            </header>
+            <div class="content-area">
+                <div class="user-info-section">
+                    <span id="main-menu-user-info" class="user-label">/ : 0 Балів</span>
+                </div>
+                <div class="menu-options">
+                    <div class="menu-items">
+                        <button id="mission-button" class="menu-item">
+                            <span>Місії</span>
+                        </button>
+                        <button id="yebaly-button" class="menu-item">
+                            <span>ЄБали</span>
+                        </button>
+                        <button id="news-button" class="menu-item">
+                            <span>Новини</span>
+                        </button>
+                        <button id="upgrades-button" class="menu-item">
+                            <span>Прокачки</span>
+                        </button>
+                    </div>
+                </div>
+                 <div class="logout-button-container">
+                    <button id="logout-button" class="logout-button">
+                        <span>Вийти</span>
+                    </button>
+                </div>
+            </div>
+            <div class="reset-button-container">
+                <button id="reset-game-button" class="reset-game-button-bottom">Скинути гру</button>
+            </div>
+        </div>
+
+        <!-- Missions Screen -->
+        <div id="mission-screen" class="screen-container">
+            <header class="common-header">
+                <button id="mission-back-button" class="header-home-button">
+                    <span>Головна</span>
+                </button>
+                <div id="mission-header-timer" class="header-time-display clickable">00:00</div>
+            </header>
+            <div class="mission-main-content">
+                <div class="mission-top-section">
+                    <div class="mission-title-container">
+                        <h2 class="section-title-mission">Місії</h2>
+                        <button id="mission-branches-button">Гілки місій</button>
+                        <button id="view-players-missions-button" class="view-players-missions-button">Місії гравців</button>
+                    </div>
+                    <div class="user-mission-info">
+                        <div class="user-mission-top-row">
+                            <span class="user-label">/<span id="current-user-mission-screen">Користувач</span></span>
+                            <div class="mission-stats-group">
+                                <span class="mission-stat">I: <span id="mission-stat-i">0</span></span>
+                                <span class="mission-stat">II: <span id="mission-stat-ii">0</span></span>
+                                <span class="mission-stat">III: <span id="mission-stat-iii">0</span></span>
+                            </div>
+                        </div>
+                        <span id="mission-screen-user-info" class="user-label-total-score">Бали: <span>0</span></span>
+                    </div>
+                </div>
+                <div id="missions-scroll-area" class="missions-scroll-area"></div>
+            </div>
+        </div>
+
+        <!-- Score Screen (ЄБали) -->
+        <div id="score-screen" class="screen-container">
+            <header class="common-header">
+                <button id="score-back-button" class="header-home-button">
+                    <span>Головна</span>
+                </button>
+                <div id="score-header-timer" class="header-time-display clickable">00:00</div>
+            </header>
+            <div class="score-main-content">
+                <h2 class="section-title-score">ЄБали</h2>
+                <div class="score-scroll-area">
+                    <h2 class="section-title">Топ гравців</h2>
+                    <div class="top-players-container">
+                        <div id="top-players-list" class="top-players-list"></div>
+                    </div>
+                    <h2 class="section-title">Історія балів</h2>
+                    <div id="history-preview-container" class="history-preview-container"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- News Screen -->
+        <div id="news-screen" class="screen-container">
+            <header class="common-header">
+                <button id="news-back-button" class="header-home-button">
+                    <span>Головна</span>
+                </button>
+                <div id="news-header-timer" class="header-time-display clickable">00:00</div>
+            </header>
+            <div class="news-main-content">
+                <!-- ЗМІНА: Повністю перероблений блок ініціативи -->
+                <div id="initiative-screen" class="initiative-container">
+                    <!-- Для першого налаштування гри -->
+                    <div id="initiative-setup-view" class="hidden">
+                        <h2 id="initiative-title">Визначення порядку ходу</h2>
+                        <div id="initiative-player-order-selection"></div>
+                        <button id="initiative-confirm-button" class="news-button">Підтвердити порядок</button>
+                    </div>
+                    <!-- Для визначення ініціативи між раундами -->
+                    <div id="determine-initiative-view" class="hidden">
+                        <h2 id="determine-initiative-title">Новина завершена</h2>
+                        <p>Час визначити ініціативу на наступний раунд.</p>
+                        <button id="determine-initiative-button" class="news-button">Визначити</button>
+                    </div>
+                    <!-- Для відображення результату ініціативи -->
+                    <div id="initiative-result-view" class="hidden">
+                         <h2 id="initiative-result-display">Ініціатива за: [Гравець]</h2>
+                         <button id="initiative-next-news-button" class="news-button">Наступна новина</button>
+                    </div>
+                </div>
+
+                <div id="news-content-wrapper" class="hidden">
+                    <div class="news-header">
+                        <h2 class="section-title-news">Новини Зони</h2>
+                        <span id="round-indicator" class="round-indicator">Раунд 0</span>
+                    </div>
+                    <div id="news-scroll-area" class="news-scroll-area"></div>
+                    <div class="news-controls">
+                        <button id="next-news-button" class="news-button">Наступна новина</button>
+                        <button id="reset-news-button" class="news-button reset-button" style="display: none;">Скинути новини</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Upgrades Screen -->
+        <div id="upgrades-screen" class="screen-container">
+            <header class="common-header">
+                <button id="upgrades-back-button" class="header-home-button">
+                    <span>Головна</span>
+                </button>
+                <div id="upgrades-header-timer" class="header-time-display clickable">00:00</div>
+            </header>
+            <div class="upgrades-main-content">
+                <div class="upgrades-header">
+                    <div class="upgrades-header-left">
+                        <h2 class="section-title-upgrades">Прокачки</h2>
+                        <div id="upgrades-limits-display" class="upgrades-limits-display"></div>
+                    </div>
+                    <div class="upgrades-header-right">
+                         <button id="view-players-upgrades-button" class="view-players-button">Прокачки гравців</button>
+                        <div id="upgrades-points-display" class="mission-stats-group"></div>
+                    </div>
+                </div>
+                <div id="upgrade-tree-container" class="upgrade-tree-container"></div>
+            </div>
+        </div>
+
+        <!-- Timer Screen -->
+        <div id="timer-screen" class="screen-container">
+            <header class="common-header">
+                <button id="timer-back-button" class="header-home-button">
+                    <span>Головна</span>
+                </button>
+                <div class="header-time-display">00:00</div>
+            </header>
+            <div class="timer-main-content">
+                <div id="timer-round-info" class="timer-round-info-container">
+                    <span>Новина 0 / Хід 0 з 0</span>
+                </div>
+
+                <div class="session-timer-container">
+                    <span>Загальний час сесії</span>
+                    <span id="session-timer-display" class="clickable">0:00:00</span>
+                </div>
+
+                <div class="turn-wrapper">
+                    <div id="player-turn-section" class="player-turn-container">
+                        <h3 id="player-turn-title">Хід гравця / Користувач</h3>
+                        <div id="player-timer-display" class="timer-display">07:00</div>
+                        <div class="timer-controls">
+                            <button id="timer-start-pause-button" class="timer-control-button">Старт</button>
+                            <button id="timer-next-player-button" class="timer-control-button">Наступний гравець</button>
+                        </div>
+                    </div>
+
+<div id="bot-turn-section" class="bot-turn-container hidden">
+                        <h3>Хід ботів</h3>
+                        <div id="bot-details-container" class="bot-details-container">
+
+                            <div class="bot-details-item">
+                                <div class="bot-details-header">
+                                    <span class="bot-details-toggle"></span>
+                                    <span class="bot-details-name">Мутанти</span>
+                                </div>
+                                <div class="bot-details-content">
+                                    <p><strong>Сова:</strong> сидить на місці та чекає.</p>
+                                    <p><strong>Лисиця:</strong> з'їдає всі предмети, котрі лежать в секторі, якщо в сусідньому секторі є предмети вона йде туди, з’їдає один предмет за раунд (може їсти предмети зі складу).</p>
+                                    <p><strong>Ведмідь:</strong> іде до найближчої будівлі.</p>
+                                    <p><strong>Темна гонча:</strong> якщо в секторі є поранений боєць вона йде до нього. Якщо поранений є в сусідньому секторі вона йде туди.</p>
+                                    <p><strong>Лісовик:</strong> іде на солдатів які стоять на траві.</p>
+                                    <p><strong>Криса:</strong> збивається в стадо до інших крис та атакують будівлі аби їх згризти. Оточуючи охороняють короля крис. Відчувають одне одного та будівлі в секторі та сусідніх.</p>
+                                    <p><strong>Болотник:</strong> йде на солдатів які стоять на траві в секторі.</p>
+                                    <p><strong>Собака:</strong> якщо в секторі або сусідньому є зомбі вона йде до нього та супроводжує його. Якщо собака прив’язана до зомбі атакує ворога, зомбі йде за нею.</p>
+                                    <p><strong>Демон:</strong> руйнує будівлі в секторі або йде для цього в сусідній.</p>
+                                    <p><strong>Химера:</strong> прямує в центральний сектор.</p>
+                                    <p><strong>Псевдогігант:</strong> іде атакувати техніку в своєму або сусідньому секторі.</p>
+                                    <p><strong>Король павуків:</strong> прямує в центральний сектор.</p>
+                                </div>
+                            </div>
+
+                            <div class="bot-details-item-static">
+                                <span class="bot-details-name">Зомбі</span>
+                            </div>
+
+                            <div class="bot-details-item">
+                                <div class="bot-details-header">
+                                    <span class="bot-details-toggle"></span>
+                                    <span class="bot-details-name">Воля</span>
+                                </div>
+                                <div class="bot-details-content">
+                                    <p>Збирає усі предмети. Йде до найближчого бійця свого угрупування та коли вони знаходяться в одному секторі йдуть на Обов'язок. Якщо один з бійців атакує ворога інші йдуть до нього. Якщо немає ні Обов'язку ні ворогів йдуть до Найближчої бази дружнього угрупування.</p>
+                                </div>
+                            </div>
+                            
+                            <div class="bot-details-item">
+                                <div class="bot-details-header">
+                                    <span class="bot-details-toggle"></span>
+                                    <span class="bot-details-name">Обовʼязок</span>
+                                </div>
+                                <div class="bot-details-content">
+                                    <p>Збирає усі предмети. Йде до найближчого бійця свого угрупування та коли вони знаходяться в одному секторі йдуть на Волю. Якщо один з бійців атакує ворога інші йдуть до нього. Якщо немає ні Волі ні ворогів йдуть до найближчої бази дружнього угрупування.</p>
+                                </div>
+                            </div>
+
+                            <div class="bot-details-item">
+                                <div class="bot-details-header">
+                                    <span class="bot-details-toggle"></span>
+                                    <span class="bot-details-name">Нанокс</span>
+                                </div>
+                                <div class="bot-details-content">
+                                    <p>Збирає лише шматки мутантів. Якщо є Псі-випромінювач, йдуть до Псі-випромінювача. Йде до найближчого бійця свого угрупування та коли троє знаходяться в одному секторі в центрі цього сектору (якщо центр заблокований, в стороні найближче до центру карти) починає будуватись Псі-випрмінювач якщо на карті немає жодного (будується один раунд, кладеться один таймер). Якщо один з бійців атакує ворога інші йдуть до нього.</p>
+                                </div>
+                            </div>
+
+                            <div class="bot-details-item">
+                                <div class="bot-details-header">
+                                    <span class="bot-details-toggle"></span>
+                                    <span class="bot-details-name">Транспорт нанокс</span>
+                                </div>
+                                <div class="bot-details-content">
+                                    <p>Йде до найближчого бійця Нанокса якщо вони є на карті. Якщо Нанокса на карті немає, за два раунди біля нього спавниться боєць зі сторони найближчої до центру сектора.</p>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                <div id="action-points-section" class="action-points-container">
+                    <div class="action-point-group">
+                        <span class="action-point-label active-color">Активні дії: <span id="active-points-value">0 / 7</span></span>
+                        <div class="action-point-buttons active-bg">
+                            <button class="action-btn minus" data-type="active">-</button>
+                            <button class="action-btn plus" data-type="active">+</button>
+                        </div>
+                    </div>
+                    <div class="action-point-group">
+                        <span class="action-point-label attack-color">Атакуючі дії: <span id="attack-points-value">0 / 5</span></span>
+                        <div class="action-point-buttons attack-bg">
+                            <button class="action-btn minus" data-type="attack">-</button>
+                            <button class="action-btn plus" data-type="attack">+</button>
+                        </div>
+                    </div>
+                    <div class="action-point-group">
+                        <span class="action-point-label build-color">Будівельні дії: <span id="build-points-value">0 / 4</span></span>
+                        <div class="action-point-buttons build-bg">
+                            <button class="action-btn minus" data-type="build">-</button>
+                            <button class="action-btn plus" data-type="build">+</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="payout-modal" class="modal-overlay">
+        <div class="modal-content">
+            <p id="payout-message"></p>
+            <div class="modal-buttons">
+                <button id="payout-ok-button" class="modal-button">Виплачено</button>
+            </div>
+        </div>
+    </div>
+    <div id="custom-modal" class="modal-overlay">
+        <div class="modal-content">
+            <p id="modal-message"></p>
+            <div class="modal-buttons">
+                <button id="modal-ok-button" class="modal-button">ОК</button>
+                <button id="modal-confirm-button" class="modal-button">Так</button>
+                <button id="modal-cancel-button" class="modal-button">Ні</button>
+            </div>
+        </div>
+    </div>
+    <div id="history-modal" class="modal-overlay">
+        <div class="history-modal-content">
+            <div class="history-modal-header">
+                <h2>Повна історія балів</h2>
+                <div class="history-modal-controls">
+                    <div class="history-filter-container">
+                        <label for="history-player-filter">Хто отримав:</label>
+                        <select id="history-player-filter"><option value="all">Всі гравці</option></select>
+                    </div>
+                    <button id="history-modal-close-button" class="close-button">&times;</button>
+                </div>
+            </div>
+            <div id="history-modal-list" class="history-modal-list"></div>
+        </div>
+    </div>
+    <div id="branches-modal" class="modal-overlay">
+        <div class="branches-modal-content">
+            <div class="branches-modal-header">
+                <h2>Гілки місій</h2>
+                <button id="branches-modal-close-button" class="close-button">&times;</button>
+            </div>
+            <div id="branches-slots-container"></div>
+        </div>
+    </div>
+
+    <div id="branches-confirmation-overlay" class="modal-overlay">
+        <div id="branches-confirmation-dialog" class="modal-content">
+            <p id="branches-confirmation-message"></p>
+            <div class="modal-buttons">
+                <button id="branches-confirm-yes" class="modal-button">Так</button>
+                <button id="branches-confirm-no" class="modal-button">Ні</button>
+            </div>
+        </div>
+    </div>
+    <div id="players-upgrades-modal" class="modal-overlay">
+        <div class="players-upgrades-modal-content">
+            <div class="players-upgrades-modal-header">
+                <h2>Прокачки гравців</h2>
+                 <div class="history-modal-controls">
+                    <div class="history-filter-container">
+                        <label for="players-upgrades-filter">Гравець:</label>
+                        <select id="players-upgrades-filter"><option value="all">Всі гравці</option></select>
+                    </div>
+                    <button id="players-upgrades-modal-close-button" class="close-button">&times;</button>
+                </div>
+            </div>
+            <div id="players-upgrades-list" class="players-upgrades-list"></div>
+        </div>
+    </div>
+    <div id="players-missions-modal" class="modal-overlay">
+        <div class="players-missions-modal-content">
+            <div class="players-missions-modal-header">
+                <h2>Місії гравців</h2>
+                 <div class="history-modal-controls">
+                    <div class="history-filter-container">
+                        <label for="players-missions-filter">Гравець:</label>
+                        <select id="players-missions-filter"><option value="all">Всі гравці</option></select>
+                    </div>
+                    <button id="players-missions-modal-close-button" class="close-button">&times;</button>
+                </div>
+            </div>
+            <div id="players-missions-list" class="players-missions-list"></div>
+        </div>
+    </div>
+<div id="mission-choice-modal" class="modal-overlay">
+        <div class="mission-choice-content">
+            <div class="mission-choice-header">
+                <h2>Оберіть одну з місій</h2>
+            </div>
+            <div id="mission-choice-grid" class="mission-choice-grid">
+                </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
